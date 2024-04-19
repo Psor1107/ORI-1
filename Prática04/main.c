@@ -14,24 +14,18 @@ struct compras
 
 struct node
 {
-    Compras *compra;
+    Compras compra;
     struct node *next;
 } typedef Node;
 
-void adicionarCompra(Node **head, Compras *compra);
+void addNode(Node **head, Compras *compra);
 
 int main()
 {
     FILE *arquivo;
+    Compras buffer;
+    Node *node = NULL;
     float total = 0.0;
-    int tamanho = 0;
-    int i = 0;
-    Compras *compras = NULL;
-
-    char tempAtivo;
-    char tempNome[50];
-    int tempQtd;
-    float tempValor;
 
     arquivo = fopen("compras.bin", "rb");
     if (arquivo == NULL)
@@ -42,59 +36,27 @@ int main()
     
     while (1) 
     {
-        fread(&tempAtivo, sizeof(char), 1, arquivo);
+        fread(&buffer.ativo, sizeof(char), 1, arquivo);
         if (feof(arquivo)) 
         {
             break;
         }
-        fread(&tempNome, sizeof(char), 50, arquivo);
-        fread(&tempQtd, sizeof(int), 1, arquivo);
-        fread(&tempValor, sizeof(float), 1, arquivo);
-        total += tempQtd * tempValor;
+        fread(&buffer.nome, sizeof(char), 51, arquivo);
+        fread(&buffer.qtd, sizeof(int), 1, arquivo);
+        fread(&buffer.valor, sizeof(float), 1, arquivo);
+        total += buffer.qtd * buffer.valor;
+        addNode(&node, &buffer);
+
     }
     fclose(arquivo);
     printf("Total da compra: R$%.2f\n", total);
     return 0;
 }
 
-/*int preencherCompras(Compras *compras, FILE *arquivo)
-{
-    char tempAtivo;
-    char tempNome[50];
-    int tempQtd;
-    float tempValor;
-
-    fread(tempAtivo, sizeof(char), 1, arquivo);
-    if (feof(arquivo))
-    {
-        return 0;
-    }
-    fread(tempNome, sizeof(char), 50, arquivo);
-    fread(tempQtd, sizeof(int), 1, arquivo);
-    if (feof(arquivo))
-    {
-        return 0;
-    }
-    fread(tempValor, sizeof(float), 1, arquivo);
-    if (feof(arquivo))
-    {
-        return 0;
-    }
-
-    compras->ativo = tempAtivo;
-    compras->qtd = tempQtd;
-    compras->valor = tempValor;
-    for (int i = 0; i < 50; i++)
-    {
-        compras->nome[i] = tempNome[i];
-    }
-    return 1;
-}*/
-
-void adicionarCompra(Node **head, Compras *compra)
+void addNode(Node **head, Compras *compra)
 {
     Node *newNode = (Node *)malloc(sizeof(Node));
-    newNode->compra = compra;
+    newNode->compra = *compra;
     newNode->next = *head;
     *head = newNode;
 }
