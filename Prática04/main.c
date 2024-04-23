@@ -139,7 +139,6 @@ void printFile()
             fread(&buffer.nome, sizeof(char), 51, arquivo);
             fread(&buffer.qtd, sizeof(int), 1, arquivo);
             fread(&buffer.valor, sizeof(float), 1, arquivo);
-            //print buffer
             printf("Nome: %s\n", buffer.nome);
             printf("Quantidade: %d\n", buffer.qtd);
             printf("Valor: %.2f\n\n", buffer.valor);
