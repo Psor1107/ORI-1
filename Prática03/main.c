@@ -25,8 +25,6 @@ int main()
     {
         tamanho = fgetc(arquivo); 
         
-        printf("[%d] ", tamanho);
-
         if (tamanho == EOF)
         {
             break;
