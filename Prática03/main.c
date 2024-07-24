@@ -23,7 +23,9 @@ int main()
     }
     while (1)
     {
-        tamanho = fgetc(arquivo);
+        tamanho = fgetc(arquivo); 
+        
+        printf("[%d] ", tamanho);
 
         if (tamanho == EOF)
         {
