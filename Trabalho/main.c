@@ -136,6 +136,24 @@ void insert_BTree(struct BTreeNode **root, int key)
     }
 }
 
+struct BTreeNode *search_BTree(struct BTreeNode **root, int key)
+{
+    int i = 0;
+    while (i < (*root)->num_keys && key > (*root)->keys[i])
+    {
+        i++;
+    }
+    if (i < (*root)->num_keys && key == (*root)->keys[i])
+    {
+        return *root;
+    }
+    if ((*root)->is_leaf)
+    {
+        return NULL;
+    }
+    return search_BTree(&(*root)->children[i], key);
+}
+
 void free_BTree(struct BTreeNode *root)
 {
     int i = 0;
@@ -179,27 +197,16 @@ int main() {
     insert_BTree(&root, 28);
 
     print_BTree(root);
-    
-    free_BTree(root);
+
     printf("\n");
 
-    root = new_BTree();
-    insert_BTree(&root, 50);
-    insert_BTree(&root, 30);
-    insert_BTree(&root, 70);
-    insert_BTree(&root, 20);
-    insert_BTree(&root, 40);
-    insert_BTree(&root, 60);
-    insert_BTree(&root, 80);
-    insert_BTree(&root, 10);
-    insert_BTree(&root, 25);
-    insert_BTree(&root, 35);
-    insert_BTree(&root, 45);
-    insert_BTree(&root, 55);
-    insert_BTree(&root, 65);
-    insert_BTree(&root, 75);
-
-    print_BTree(root);
+    BTree node = search_BTree(&root, 18);
+    printf("num_keys: %d\n", node->num_keys);
+    for (int i = 0; i < node->num_keys; i++)
+    {
+        printf("[%d] ", node->keys[i]);
+    }
+    free_BTree(root);
     
     return 0;
 }
