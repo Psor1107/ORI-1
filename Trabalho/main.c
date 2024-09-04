@@ -1,179 +1,195 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
-#define MAX_ORDER 3
+#define MAX 3 // Grau (Ordem - 1)
 
-struct BTreeNode {
-    int keys[MAX_ORDER-1]; 
-    int num_keys;
-    bool is_leaf;
-    struct BTreeNode *children[MAX_ORDER];
-}typedef *BTree;
+struct BTreeNode
+{
+    int keys[MAX];
+    struct BTreeNode *children[MAX + 1];
+    int n; // Número de chaves
+    bool leaf;
+} typedef *BTree;
 
+BTree new_BTree();
+struct BTreeNode *new_node_BTree(bool leaf);
+void insert_BTree(struct BTreeNode **root, int key);
+struct BTreeNode *search_BTree(struct BTreeNode *root, int key);
+void split_child_BTree(struct BTreeNode *parent, int i, struct BTreeNode *child);
+void insert_non_full_BTree(struct BTreeNode *node, int key);
+void print_BTree(struct BTreeNode *root);
+void free_BTree(struct BTreeNode *root);
+int get_Predecessor(struct BTreeNode *node, int idx);
+int get_Sucessor(struct BTreeNode *node, int idx);
+void merge(struct BTreeNode *node, int idx);
+void fill(struct BTreeNode *node, int idx);
+void borrow_prev(struct BTreeNode *node, int idx);
+void borrow_next(struct BTreeNode *node, int idx);
+void remove_non_leaf(struct BTreeNode *node, int idx);
+void remove_leaf(struct BTreeNode *node, int idx);
+void remove_key(struct BTreeNode *node, int key);
+
+// nova arvore
 BTree new_BTree()
 {
     return NULL;
 }
 
-struct BTreeNode *new_node_BTree(bool is_leaf)
+// novo nó
+struct BTreeNode *new_node_BTree(bool leaf)
 {
-    struct BTreeNode *newNode = (struct BTreeNode *)malloc(sizeof(struct BTreeNode));
-    newNode->num_keys = 0;
-    newNode->is_leaf = is_leaf;
-    for (int i = 0; i < MAX_ORDER; i++) {
-        newNode->children[i] = NULL;
-    }
-    return newNode;
-}
-
-void split_child_BTree(struct BTreeNode *parent, int i) {
-    
-    struct BTreeNode *child = parent->children[i];
-    struct BTreeNode *new_node = new_node_BTree(child->is_leaf);
-    
-    int median = MAX_ORDER / 2;
-
-    // -move metade das chaves pro novo nó
-    new_node->num_keys = median;
-    for (int j = 0; j < median; j++) {
-        new_node->keys[j] = child->keys[j + median];
-    }
-
-    // -se não for folha -> move a mesma metade dos ponteiros dos filhos pro novo nó
-    if (!child->is_leaf) {
-        for (int j = 0; j <= median; j++) {
-            new_node->children[j] = child->children[j + median];
-        }
-    }
-
-    child->num_keys = median - 1;
-
-    // -move os ponteiros dos filhos antigos do pai pra direita pro novo filho
-    for (int j = parent->num_keys; j >= i + 1; j--) {
-        parent->children[j + 1] = parent->children[j];
-    }
-
-    // -linka o novo filho
-    parent->children[i + 1] = new_node;
-
-    // -como o novo filho é o do meio move a chave do meio pro pai
-    //
-    // -fazendo isso aqui da pra garantir que vai manter ordenado
-    // exemplo:   
-    //            5
-    //           / \
-    //          10  20
-    //          
-    //             5
-    //           / | \
-    //          10 12 20
-    //
-    // -quando a gente cortar no meio...
-    //             
-    //            5 12
-    //           /    \
-    //          10    20
-    // 
-    // ...lembrando que 5 e 12 são do mesmo "bloco"...
-    for (int j = parent->num_keys - 1; j >= i; j--) {
-        parent->keys[j + 1] = parent->keys[j];
-    }
-
-    // -move a chave do meio pro pai
-    // -ja que ela ja foi "deletada"...
-    parent->keys[i] = child->keys[median - 1];
-    parent->num_keys++;
-}
-
-
-
-void insert_non_full_BTree(struct BTreeNode **root, int key)
-{
-    int i = (*root)->num_keys - 1;
-    
-    if ((*root)->is_leaf) {
-        while (i >= 0 && (*root)->keys[i] > key) {
-            (*root)->keys[i + 1] = (*root)->keys[i];
-            i--;
-        }
-        (*root)->keys[i + 1] = key;
-        (*root)->num_keys++;
-    } else {
-        while (i >= 0 && (*root)->keys[i] > key) {
-            i--;
-        }
-        i++;
-        
-        if ((*root)->children[i]->num_keys == MAX_ORDER - 1) {
-            split_child_BTree(*root, i);
-            if ((*root)->keys[i] < key) {
-                i++;
-            }
-        }
-        insert_non_full_BTree(&(*root)->children[i], key);
-    }
-}
-
-void insert_BTree(struct BTreeNode **root, int key)
-{
-    if (*root == NULL)
+    struct BTreeNode *node = (struct BTreeNode *)malloc(sizeof(struct BTreeNode));
+    node->leaf = leaf;
+    node->n = 0;
+    for (int i = 0; i < MAX + 1; i++)
     {
-        *root = new_node_BTree(true);
-        (*root)->keys[0] = key;
-        (*root)->num_keys = 1;
-    } 
-    else 
-    {
-        if ((*root)->num_keys == MAX_ORDER - 1)
-        {
-            struct BTreeNode *new_root = new_node_BTree(false);
-            new_root->children[0] = *root;
-            split_child_BTree(new_root, 0);
-            *root = new_root;
-        }   
-        insert_non_full_BTree(root, key);
+        node->children[i] = NULL;
     }
+    return node;
 }
 
-struct BTreeNode *search_BTree(struct BTreeNode **root, int key)
+// busca
+struct BTreeNode *search_BTree(struct BTreeNode *root, int key)
 {
     int i = 0;
-    while (i < (*root)->num_keys && key > (*root)->keys[i])
+    while (i < root->n && key > root->keys[i]) // encontrar a posição da chave
     {
         i++;
     }
-    if (i < (*root)->num_keys && key == (*root)->keys[i])
+    if (i < root->n && key == root->keys[i]) // se a chave for encontrada
     {
-        return *root;
+        return root;
     }
-    if ((*root)->is_leaf)
+    if (root->leaf) // se for folha
     {
         return NULL;
     }
-    return search_BTree(&(*root)->children[i], key);
+    return search_BTree(root->children[i], key); // recursão
 }
 
-void free_BTree(struct BTreeNode *root)
+// inserção
+void insert_BTree(struct BTreeNode **root, int key)
 {
-    int i = 0;
-    if (root)
+    if (*root == NULL)  // se a árvore estiver vazia
     {
-        for (i = 0; i < root->num_keys; i++)
+        *root = new_node_BTree(true); 
+        (*root)->keys[0] = key;
+        (*root)->n = 1;
+    }
+    else
+    {
+        if (search_BTree(*root, key)) // se a chave já existir
         {
-            free_BTree(root->children[i]);
+            return;
         }
-        free_BTree(root->children[i]);
-        free(root);
+        if ((*root)->n == MAX) // se o nó estiver cheio
+        {
+            struct BTreeNode *newRoot = new_node_BTree(false); 
+            newRoot->children[0] = *root;
+            split_child_BTree(newRoot, 0, *root); // dividir o nó
+            insert_non_full_BTree(newRoot, key); // inserir a chave
+            *root = newRoot; // atualizar a raiz
+        }
+        else
+        {
+            insert_non_full_BTree(*root, key); // inserir a chave
+        }
     }
 }
 
+// inserção em nó não cheio
+void insert_non_full_BTree(struct BTreeNode *node, int key)
+{
+    // encontrar a posição da chave
+    int i = node->n - 1;
+    // se for folha
+    if (node->leaf)
+    {
+        while (i >= 0 && key < node->keys[i]) // encontrar a posição correta
+        {
+            node->keys[i + 1] = node->keys[i]; // mover as chaves maiores para frente
+            i--;                              // decrementar
+        }
+        node->keys[i + 1] = key; // inserir a chave
+        node->n++;              // incrementar o número de chaves
+    }
+    // se não for folha
+    else
+    {
+        while (i >= 0 && key < node->keys[i]) // encontrar a posição correta
+        {
+            i--; // decrementar
+        }
+        i++; 
+        if (node->children[i]->n == MAX)  // se o filho estiver cheio
+        {
+            split_child_BTree(node, i, node->children[i]); // dividir o filho
+            if (key > node->keys[i]) // se a chave for maior que a chave do meio
+            {
+                i++; // incrementar
+            }
+        }
+        insert_non_full_BTree(node->children[i], key); // inserir a chave no filho
+    }
+}
+
+// divisão de nó
+void split_child_BTree(struct BTreeNode *parent, int i, struct BTreeNode *child)
+{
+    // novo nó
+    struct BTreeNode *newChild = new_node_BTree(child->leaf);
+
+    // metade das chaves para o novo nó
+    newChild->n = (MAX - 1) / 2;
+
+    // transferir metade das chaves para o novo nó
+    for (int j = 0; j < (MAX - 1) / 2; j++)
+    {
+        newChild->keys[j] = child->keys[j + (MAX + 1) / 2];
+    }
+
+    // transferir metade dos filhos para o novo nó caso não seja folha
+    if (!child->leaf)
+    {
+        for (int j = 0; j <= (MAX - 1) / 2; j++)
+        {
+            newChild->children[j] = child->children[j + (MAX + 1) / 2];
+        }
+    }
+
+    // atualizar o número de chaves do nó (no - novo nó)
+    child->n = (MAX - 1) / 2;
+
+    // abrir espaço para o novo filho
+    for (int j = parent->n; j >= i + 1; j--)
+    {
+        parent->children[j + 1] = parent->children[j];
+    }
+
+    // ligar o novo filho ao pai
+    parent->children[i + 1] = newChild;
+
+    // abrir espaço para a nova chave
+    for (int j = parent->n - 1; j >= i; j--)
+    {
+        parent->keys[j + 1] = parent->keys[j];
+    }
+
+    // mover a chave do meio para o pai
+    parent->keys[i] = child->keys[(MAX - 1) / 2];
+    // atualizar o número de chaves do pai
+    parent->n++;
+}
+
+// impressão
 void print_BTree(struct BTreeNode *root)
 {
     int i;
     if (root != NULL)
     {
-        for (i = 0; i < root->num_keys; i++)
+        for (i = 0; i < root->n; i++)
         {
             print_BTree(root->children[i]);
             printf("[%d] ", root->keys[i]);
@@ -182,31 +198,311 @@ void print_BTree(struct BTreeNode *root)
     }
 }
 
-int main() {
-    
+// liberação de memória
+void free_BTree(struct BTreeNode *root)
+{
+    if (root != NULL)
+    {
+        for (int i = 0; i <= root->n; i++)
+        {
+            if (root->children[i] != NULL)
+            {
+                free_BTree(root->children[i]);
+            }
+        }
+        free(root);
+    }
+}
+
+// busca do predecessor
+int get_Predecessor(struct BTreeNode *node, int idx)
+{
+    struct BTreeNode *cur = node->children[idx];
+    while (!cur->leaf)
+        cur = cur->children[cur->n];
+    return cur->keys[cur->n - 1];
+}
+
+// busca do sucessor
+int get_Sucessor(struct BTreeNode *node, int idx)
+{
+    struct BTreeNode *cur = node->children[idx + 1];
+    while (!cur->leaf)
+        cur = cur->children[0];
+    return cur->keys[0];
+}
+
+// junção de nós
+void merge(struct BTreeNode *node, int idx)
+{
+    struct BTreeNode *child = node->children[idx];
+    struct BTreeNode *sibling = node->children[idx + 1];
+
+    child->keys[(MAX - 1) / 2] = node->keys[idx];
+
+    for (int i = 0; i < sibling->n; i++)
+        child->keys[i + (MAX + 1) / 2] = sibling->keys[i];
+
+    if (!child->leaf)
+    {
+        for (int i = 0; i <= sibling->n; i++)
+            child->children[i + (MAX + 1) / 2] = sibling->children[i];
+    }
+
+    for (int i = idx + 1; i < node->n; i++)
+        node->keys[i - 1] = node->keys[i];
+
+    for (int i = idx + 2; i <= node->n; i++)
+        node->children[i - 1] = node->children[i];
+
+    child->n += sibling->n + 1;
+    node->n--;
+
+    free(sibling);
+}
+
+// preenchimento
+void fill(struct BTreeNode *node, int idx)
+{
+    if (idx != 0 && node->children[idx - 1]->n >= (MAX + 1) / 2)
+        borrow_prev(node, idx);
+    else if (idx != node->n && node->children[idx + 1]->n >= (MAX + 1) / 2)
+        borrow_next(node, idx);
+    else
+    {
+        if (idx != node->n)
+            merge(node, idx);
+        else
+            merge(node, idx - 1);
+    }
+}
+
+// empréstimo do nó anterior
+void borrow_prev(struct BTreeNode *node, int idx)
+{
+    struct BTreeNode *child = node->children[idx];
+    struct BTreeNode *sibling = node->children[idx - 1];
+
+    for (int i = child->n - 1; i >= 0; i--)
+        child->keys[i + 1] = child->keys[i];
+
+    if (!child->leaf)
+    {
+        for (int i = child->n; i >= 0; i--)
+            child->children[i + 1] = child->children[i];
+    }
+
+    child->keys[0] = node->keys[idx - 1];
+
+    if (!child->leaf)
+        child->children[0] = sibling->children[sibling->n];
+
+    node->keys[idx - 1] = sibling->keys[sibling->n - 1];
+
+    child->n += 1;
+    sibling->n -= 1;
+}
+
+// empréstimo do próximo nó
+void borrow_next(struct BTreeNode *node, int idx)
+{
+    struct BTreeNode *child = node->children[idx];
+    struct BTreeNode *sibling = node->children[idx + 1];
+
+    child->keys[(child->n)] = node->keys[idx];
+
+    if (!(child->leaf))
+        child->children[(child->n) + 1] = sibling->children[0];
+
+    node->keys[idx] = sibling->keys[0];
+
+    for (int i = 1; i < sibling->n; i++)
+        sibling->keys[i - 1] = sibling->keys[i];
+
+    if (!sibling->leaf)
+    {
+        for (int i = 1; i <= sibling->n; i++)
+            sibling->children[i - 1] = sibling->children[i];
+    }
+
+    child->n += 1;
+    sibling->n -= 1;
+}
+
+// remoção de nó não folha
+void remove_non_leaf(struct BTreeNode *node, int idx)
+{
+    int key = node->keys[idx];
+
+    if (node->children[idx]->n >= (MAX + 1) / 2)
+    {
+        int pred = get_Predecessor(node, idx);
+        node->keys[idx] = pred;
+        remove_key(node->children[idx], pred);
+    }
+    else if (node->children[idx + 1]->n >= (MAX + 1) / 2)
+    {
+        int succ = get_Sucessor(node, idx);
+        node->keys[idx] = succ;
+        remove_key(node->children[idx + 1], succ);
+    }
+    else
+    {
+        merge(node, idx);
+        remove_key(node->children[idx], key);
+    }
+}
+
+// remoção de nó folha
+void remove_leaf(struct BTreeNode *node, int idx)
+{
+    for (int i = idx + 1; i < node->n; i++)
+        node->keys[i - 1] = node->keys[i];
+    node->n--;
+}
+
+// remoção de chave
+void remove_key(struct BTreeNode *node, int key)
+{
+    int idx = 0;
+    while (idx < node->n && node->keys[idx] < key)
+        idx++;
+
+    if (idx < node->n && node->keys[idx] == key)
+    {
+        if (node->leaf)
+            remove_leaf(node, idx);
+        else
+            remove_non_leaf(node, idx);
+    }
+    else
+    {
+        if (node->leaf)
+        {
+            printf("A chave %d não está na árvore.\n", key);
+            return;
+        }
+
+        bool flag = ((idx == node->n) ? true : false);
+
+        if (node->children[idx]->n < (MAX + 1) / 2)
+            fill(node, idx);
+
+        if (flag && idx > node->n)
+            remove_key(node->children[idx - 1], key);
+        else
+            remove_key(node->children[idx], key);
+    }
+}
+
+// carregar arvore
+void loadTree(FILE *dados, struct BTreeNode **root)
+{
+
+    int data;
+    int i = 0;
+    char linha[250];
+
+    while (fgets(linha, 250, dados) != NULL)
+    {
+
+        char *token = strtok(linha, ";"); // id
+        data = atoi(token);
+
+        token = strtok(NULL, ";"); // estado
+        token = strtok(NULL, ";"); // municipio
+        token = strtok(NULL, ";"); // rede
+        token = strtok(NULL, ";"); // media_ciencias_natureza
+        token = strtok(NULL, ";"); // media_ciencias_humanas
+        token = strtok(NULL, ";"); // media_linguagem
+        token = strtok(NULL, ";"); // media_matematica
+        token = strtok(NULL, ";"); // media_redacao
+
+        insert_BTree(root, data);
+        i++;
+    }
+    printf("Foram inseridos %d registros na arvore\n", i);
+}
+
+int main()
+{
     BTree root = new_BTree();
-    insert_BTree(&root, 15);
-    insert_BTree(&root, 10);
-    insert_BTree(&root, 20);
-    insert_BTree(&root, 5);
-    insert_BTree(&root, 12);
-    insert_BTree(&root, 25);
-    insert_BTree(&root, 30);
-    insert_BTree(&root, 8);
-    insert_BTree(&root, 18);
-    insert_BTree(&root, 28);
 
+    // inserção simples
+    int buffer1[] = {15, 10, 20, 5, 12, 25, 30, 8, 18, 28};
+    for (int i = 0; i < sizeof(buffer1) / sizeof(buffer1[0]); i++)
+    {
+        insert_BTree(&root, buffer1[i]);
+    }
+    printf("Árvore B inserção simples:\n");
     print_BTree(root);
+    printf("\n\n");
 
+    // overflow no pai
+    root = new_BTree();
+    int buffer2[] = {3, 7, 9, 10, 11, 13, 15, 16, 17, 18};
+    for (int i = 0; i < sizeof(buffer2) / sizeof(buffer2[0]); i++)
+    {
+        insert_BTree(&root, buffer2[i]);
+    }
+    printf("Árvore B overflow no pai:\n");
+    print_BTree(root);
+    printf("\n\n");
+
+    // inserção em ordem decrescente
+    root = new_BTree();
+    int buffer3[] = {30, 25, 20, 15, 10, 5};
+    for (int i = 0; i < sizeof(buffer3) / sizeof(buffer3[0]); i++)
+    {
+        insert_BTree(&root, buffer3[i]);
+    }
+    printf("Árvore B inserção em ordem decrescente:\n");
+    print_BTree(root);
+    printf("\n\n");
+
+    // chaves duplicadas
+    root = new_BTree();
+    int buffer4[] = {10, 20, 10, 30, 20, 40};
+    for (int i = 0; i < sizeof(buffer4) / sizeof(buffer4[0]); i++)
+    {
+        insert_BTree(&root, buffer4[i]);
+    }
+    printf("Árvore B chaves duplicadas:\n");
+    print_BTree(root);
+    printf("\n\n");
+
+    // remoção de chaves
+    int buffer5[] = {10, 20, 5, 6, 12, 30, 7, 17};
+    root = new_BTree();
+    for (int i = 0; i < sizeof(buffer5) / sizeof(buffer5[0]); i++)
+    {
+        insert_BTree(&root, buffer5[i]);
+    }
+    printf("Árvore B:\n");
+    print_BTree(root);
     printf("\n");
 
-    BTree node = search_BTree(&root, 18);
-    printf("num_keys: %d\n", node->num_keys);
-    for (int i = 0; i < node->num_keys; i++)
+    remove_key(root, 6);
+    remove_key(root, 20);
+    printf("\nÁrvore B após remoção de chaves 6 e 20:\n");
+    print_BTree(root);
+    printf("\n\n");
+
+    // memoria secundaria
+
+    root = new_BTree();
+    FILE *dados = fopen("DadosEnemMin.txt", "r");
+    if (dados == NULL)
     {
-        printf("[%d] ", node->keys[i]);
+        printf("Erro ao abrir o arquivo de dados\n");
+        return 1;
     }
+
+    loadTree(dados, &root);
+    print_BTree(root);
+    printf("\n\n");
+
     free_BTree(root);
-    
+
     return 0;
 }
